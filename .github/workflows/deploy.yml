@@ -1,0 +1,38 @@
+name: Deploy to Snowflake SPCS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # allows manual trigger from GitHub UI
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest   # Docker runs in GitHub's cloud, not your Mac
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Snowflake Image Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.SNOWFLAKE_REGISTRY }}
+          username: ${{ secrets.SNOWFLAKE_USERNAME }}
+          password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.SNOWFLAKE_REGISTRY }}/demo_app_db/public/demo_repo/snowflake-demos:latest
+            ${{ secrets.SNOWFLAKE_REGISTRY }}/demo_app_db/public/demo_repo/snowflake-demos:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Done
+        run: echo "✅ Image pushed to Snowflake registry. Now run CREATE SERVICE in Snowflake."
